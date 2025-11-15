@@ -1,5 +1,6 @@
 <script lang="ts">
     import Header from './header.svelte';
+    // import * as d3 from "d3"; // Uncomment when ready to use D3 charts
 
     interface SessionResult {
         position?: number;
