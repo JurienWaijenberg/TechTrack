@@ -1,6 +1,14 @@
 <script lang="ts">
-    import Header from './header.svelte';
+    import * as d3 from "d3";
     // import * as d3 from "d3"; // Uncomment when ready to use D3 charts
+
+    import Timeline from "../completed/Timeline.svelte";
+
+
+
+
+
+    import Header from './header.svelte';
 
     interface SessionResult {
         position?: number;
@@ -364,6 +372,51 @@
         });
     }
 
+    // Transform race sessions into driver points data for the chart
+    const driverChartData = $derived((() => {
+        if (raceSessions.length === 0) return { driverData: [], raceLabels: [] };
+        
+        // Get all unique drivers
+        const driverMap = new Map<string, { driverName: string; data: Array<{ raceIndex: number; points: number }> }>();
+        const raceLabels: string[] = [];
+        
+        raceSessions.forEach((session, raceIndex) => {
+            const raceName = session.meeting_name ?? session.circuit_short_name ?? `Race ${raceIndex + 1}`;
+            raceLabels.push(raceName);
+            
+            if (session.results && session.results.length > 0) {
+                session.results.forEach(result => {
+                    const driverName = result.full_name ?? `Driver ${result.driver_number ?? 'Unknown'}`;
+                    const points = typeof result.points === 'number' ? result.points : 0;
+                    
+                    if (!driverMap.has(driverName)) {
+                        driverMap.set(driverName, {
+                            driverName,
+                            data: new Array(raceSessions.length).fill(null).map(() => ({ raceIndex: 0, points: 0 }))
+                        });
+                    }
+                    
+                    const driver = driverMap.get(driverName)!;
+                    driver.data[raceIndex] = { raceIndex, points };
+                });
+            }
+        });
+        
+        // Fill in missing races with 0 points for each driver
+        driverMap.forEach(driver => {
+            for (let i = 0; i < raceSessions.length; i++) {
+                if (!driver.data[i] || driver.data[i].points === undefined) {
+                    driver.data[i] = { raceIndex: i, points: 0 };
+                }
+            }
+        });
+        
+        return {
+            driverData: Array.from(driverMap.values()),
+            raceLabels
+        };
+    })());
+
     $effect(() => {
         if (raceSessions.length === 0 && !isLoading) {
             // Clear expired cache entries on load
@@ -371,6 +424,7 @@
             fetchData();
         }
     });
+
 </script>
 
 <style>
@@ -505,6 +559,10 @@
         background: rgba(255, 193, 7, 0.2);
         color: #FFC107;
     }
+
+    text.Axis__tick {
+        color: white;
+    }
 </style>
 <Header />  
 
@@ -518,6 +576,18 @@
                 </span>
             {/if}
         </h2>
+
+        {#if raceSessions.length > 0 && driverChartData.driverData.length > 0}
+            <div class="App">
+                <h1>F1 Driver Points Championship</h1>
+                <div class="App__charts">
+                    <Timeline
+                        driverData={driverChartData.driverData}
+                        raceLabels={driverChartData.raceLabels}
+                        label="Points" />
+                </div>
+            </div>
+        {/if}
 
         {#if errorMessage}
             <p class="state-message error">{errorMessage}</p>
