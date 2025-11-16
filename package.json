@@ -22,6 +22,7 @@
 		"vite": "^7.1.10"
 	},
 	"dependencies": {
-		"d3": "^7.9.0"
+		"d3": "^7.9.0",
+		"set-cookie-parser": "^2.7.2"
 	}
 }

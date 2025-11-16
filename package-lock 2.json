@@ -8,8 +8,7 @@
 			"name": "max",
 			"version": "0.0.1",
 			"dependencies": {
-				"d3": "^7.9.0",
-				"set-cookie-parser": "^2.7.2"
+				"d3": "^7.9.0"
 			},
 			"devDependencies": {
 				"@sveltejs/adapter-auto": "^7.0.0",
@@ -2098,6 +2097,7 @@
 			"version": "2.7.2",
 			"resolved": "https://registry.npmjs.org/set-cookie-parser/-/set-cookie-parser-2.7.2.tgz",
 			"integrity": "sha512-oeM1lpU/UvhTxw+g3cIfxXHyJRc/uidd3yK1P242gzHds0udQBYzs3y8j4gCCW+ZJ7ad0yctld8RYO+bdurlvw==",
+			"dev": true,
 			"license": "MIT"
 		},
 		"node_modules/sirv": {
