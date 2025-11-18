@@ -560,7 +560,7 @@
         color: #FFC107;
     }
 
-    text.Axis__tick {
+    .Axis__tick {
         color: white;
     }
 </style>

@@ -24,7 +24,7 @@
   </script>
   
   <g
-    class="Axis Axis--dimension-{dimension}"
+    class="Axis Axis--dimension-{dimension}" 
     transform={`translate(0, ${dimension == "x" ? dimensions.boundedHeight : 0})`}>
     <line
       class="Axis__line"
@@ -34,9 +34,9 @@
   
     {#each ticks as tick, i}
       {@const tickValue = scale && typeof scale === 'function' ? scale(tick) : 0}
-      <text class="Axis__tick" transform={`translate(${(
+      <text class="Axis__tick" style="fill: #fff;" transform={`translate(${(
         dimension == "x"
-          ? [tickValue, 25]
+          ? [tickValue, 35]
           : [-16, tickValue]
         ).join(", ")})`}>
         {formatTick(tick)}
@@ -46,7 +46,7 @@
     {#if label}
       <text
         class="Axis__label"
-        style="transform: translate({(
+        style="fill: #fff; transform: translate({(
           dimension == "x"
             ? [dimensions.boundedWidth / 2, 60]
             : [-56, dimensions.boundedHeight / 2]
@@ -81,6 +81,10 @@
     .Axis--dimension-y .Axis__tick {
       dominant-baseline: middle;
       text-anchor: end;
+    }
+
+    .Axis--dimension-x .Axis__tick text {
+      transform: rotate(25deg);
     }
   </style>
   
