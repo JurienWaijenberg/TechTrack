@@ -5,11 +5,7 @@
     // Types
     import type { Driver, RaceSession } from '$lib/types/f1';
     
-    // Config
-    import { CACHE_CONFIG } from '$lib/config/api';
-    
     // Utils
-    import { getCachedData, setCachedData, clearExpiredCache, clearAllCache } from '$lib/utils/cache';
     import { fetchRaceSessionsWithResults, fetchDrivers } from '$lib/utils/api';
     import { transformToChartData } from '$lib/utils/chart';
     import { formatDate } from '$lib/utils/format';
@@ -19,8 +15,6 @@
     let raceSessions: RaceSession[] = $state([]);
     let isLoading = $state(false);
     let errorMessage = $state<string | null>(null);
-    let cacheStatus = $state<'fresh' | 'cached' | null>(null);
-    let currentRequestDelay = $state(1000);
     let driversFetchInitiated = false;
 
     // Fetch drivers
@@ -41,33 +35,9 @@
     async function loadRaceData() {
         isLoading = true;
         errorMessage = null;
-        cacheStatus = null;
-
-        // Check cache first
-        const cachedSessions = getCachedData<RaceSession[]>(CACHE_CONFIG.PREFIXES.SESSIONS);
-        if (cachedSessions) {
-            console.log('Using cached race sessions');
-            raceSessions = cachedSessions;
-            cacheStatus = 'cached';
-            isLoading = false;
-            return;
-        }
 
         try {
-            const sessionsWithResults = await fetchRaceSessionsWithResults(
-                (current, total) => {
-                    console.log(`Progress: ${current}/${total}`);
-                },
-                (delay) => {
-                    currentRequestDelay = Math.min(delay, 10000);
-                }
-            );
-
-            // Cache the complete sessions with results
-            setCachedData(CACHE_CONFIG.PREFIXES.SESSIONS, sessionsWithResults);
-            
-            raceSessions = sessionsWithResults;
-            cacheStatus = 'fresh';
+            raceSessions = await fetchRaceSessionsWithResults();
         } catch (error) {
             console.error('Error fetching race sessions:', error);
             errorMessage = error instanceof Error ? error.message : 'Unknown error fetching sessions';
@@ -79,22 +49,9 @@
     // Transform data for chart
     const driverChartData = $derived(transformToChartData(raceSessions));
 
-    // Expose cache clearing functions globally for development
-    $effect(() => {
-        if (typeof window !== 'undefined') {
-            (window as any).clearF1Cache = () => {
-                const count = clearAllCache();
-                console.log(`Cleared ${count} cache entries`);
-                raceSessions = [];
-                loadRaceData();
-            };
-        }
-    });
-
     // Load data on mount
     $effect(() => {
         if (raceSessions.length === 0 && !isLoading) {
-            clearExpiredCache();
             loadRaceData();
         }
     });
@@ -110,26 +67,6 @@
 
 <div class="page-container">
     <section class="race-sessions">
-        <h2>
-            2025 F1 Race Sessions
-            {#if cacheStatus}
-                <span class="cache-status {cacheStatus}">
-                    {cacheStatus === 'fresh' ? 'Fresh' : 'Cached'}
-                </span>
-            {/if}
-        </h2>
-
-        {#if raceSessions.length > 0 && driverChartData.driverData.length > 0}
-            <div class="App">
-                <h1>F1 Driver Points Championship</h1>
-                <div class="App__charts">
-                    <Timeline
-                        driverData={driverChartData.driverData}
-                        raceLabels={driverChartData.raceLabels}
-                        label="Points" />
-                </div>
-            </div>
-        {/if}
 
         <section>
             <h2>2025 F1 Drivers</h2>
@@ -146,6 +83,8 @@
             </div>
         </section>
 
+        <h2>2025 F1 Race Sessions</h2>
+
         {#if errorMessage}
             <p class="state-message error">{errorMessage}</p>
         {:else if isLoading && raceSessions.length === 0}
@@ -155,14 +94,6 @@
         {:else}
             <p class="state-message">
                 Total race sessions found: {raceSessions.length}
-                {#if CACHE_CONFIG.TTL_MS > 0}
-                    <br>
-                    <small style="opacity: 0.6; font-size: 0.85rem;">
-                        Data cached for {Math.round(CACHE_CONFIG.TTL_MS / 1000 / 60)} minutes.
-                        <br>
-                        Console commands: <code>clearF1Cache()</code>
-                    </small>
-                {/if}
             </p>
 
             {#each raceSessions as session}
@@ -208,5 +139,18 @@
                 </article>
             {/each}
         {/if}
+
+        {#if raceSessions.length > 0 && driverChartData.driverData.length > 0}
+            <div class="App">
+                <h1>F1 Driver Points Championship</h1>
+                <div class="App__charts">
+                    <Timeline
+                        driverData={driverChartData.driverData}
+                        raceLabels={driverChartData.raceLabels}
+                        label="Points" />
+                </div>
+            </div>
+        {/if}
+
     </section>
 </div>

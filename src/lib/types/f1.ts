@@ -8,6 +8,7 @@ export interface Driver {
 }
 
 export interface SessionResult {
+    session_key?: number; // Links result to a session
     position?: number;
     driver_number?: number;
     full_name?: string;
