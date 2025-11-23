@@ -1,9 +1,5 @@
 <script lang="ts">
     import * as d3 from "d3";
-  
-    import Chart from "./Chart/Chart.svelte";
-    import Line from "./Chart/Line.svelte";
-    import Axis from "./Chart/Axis.svelte";
     
     // Color scheme for driver lines
     const driverColors = [
@@ -23,12 +19,17 @@
         data: DriverDataPoint[];
     }
   
-    export let driverData: DriverData[] = [];
-    export let raceLabels: string[] = [];
-    export let label = "Points";
+    interface Props {
+        driverData?: DriverData[];
+        raceLabels?: string[];
+        label?: string;
+    }
   
-    let width = 100;
-    let height = 100;
+    let { driverData = [], raceLabels = [], label = "Points" }: Props = $props();
+  
+    let containerElement: HTMLDivElement;
+    let width = $state(800);
+    let height = $state(300);
   
     const margins = {
       marginTop: 40,
@@ -36,79 +37,188 @@
       marginBottom: 40,
       marginLeft: 75
     };
-    $: dms = {
-      width,
-      height,
-      ...margins,
-      boundedHeight: Math.max(
-        height - margins.marginTop - margins.marginBottom,
-        0
-      ),
-      boundedWidth: Math.max(
-        width - margins.marginLeft - margins.marginRight,
-        0
-      )
-    };
+    
+    const boundedWidth = $derived(Math.max(width - margins.marginLeft - margins.marginRight, 0));
+    const boundedHeight = $derived(Math.max(height - margins.marginTop - margins.marginBottom, 0));
   
     // Get all points to determine y-axis domain
-    $: allPoints = driverData.flatMap((driver: DriverData) => driver.data.map((d: DriverDataPoint) => d.points || 0));
-    $: maxPoints = allPoints.length > 0 ? Math.max(...allPoints) : 0;
+    const allPoints = $derived(driverData.flatMap((driver: DriverData) => driver.data.map((d: DriverDataPoint) => d.points || 0)));
+    const maxPoints = $derived(allPoints.length > 0 ? Math.max(...allPoints) : 0);
   
-    // X-axis: scale for race indices
-    $: xScale = d3.scalePoint<string>()
-      .domain(raceLabels.length > 0 ? raceLabels : driverData[0]?.data.map((_: DriverDataPoint, i: number) => String(i)) || [])
-      .range([0, dms.boundedWidth])
-      .padding(0.1);
+    // X-axis: scale for race labels
+    const xScale = $derived(d3.scalePoint<string>()
+      .domain(raceLabels.length > 0 ? raceLabels : [])
+      .range([0, boundedWidth])
+      .padding(0.1));
   
     // Y-axis: scale for points
-    $: yScale = d3.scaleLinear()
+    const yScale = $derived(d3.scaleLinear()
       .domain([0, Math.max(maxPoints, 1)])
-      .range([dms.boundedHeight, 0])
-      .nice();
-  
+      .range([boundedHeight, 0])
+      .nice());
+    
+    // Generate line paths for each driver
+    const lineGenerator = $derived(d3.line<DriverDataPoint>()
+      .x((d) => {
+        const raceIdx = d.raceIndex ?? 0;
+        const raceLabel = raceLabels[raceIdx];
+        if (!raceLabel) {
+          console.warn(`No race label for index ${raceIdx}`);
+          return 0;
+        }
+        const xValue = xScale(raceLabel);
+        if (xValue === undefined) {
+          console.warn(`xScale returned undefined for "${raceLabel}"`);
+          return 0;
+        }
+        return xValue;
+      })
+      .y((d) => yScale(d.points || 0))
+      .curve(d3.curveMonotoneX));
+    
+    // X-axis ticks
+    const xTicks = $derived(xScale.domain());
+    
+    // Y-axis ticks
+    const yTicks = $derived(yScale.ticks(5));
+    
     // Format function for x-axis ticks
-    $: formatRaceTick = (d: any) => {
-      if (typeof d === 'string') return d.length > 10 ? d.substring(0, 10) + '...' : d;
-      return String(d);
-    };
-  </script>
-  
-  <div class="Timeline placeholder" bind:clientWidth={width} bind:clientHeight={height}>
-    <Chart dimensions={dms}>
-      <Axis
-        dimension="x"
-        scale={xScale}
-        formatTick={formatRaceTick}
-        label=""
+    function formatRaceTick(d: string): string {
+      return d.length > 10 ? d.substring(0, 10) + '...' : d;
+    }
+    
+    // Update dimensions when container size changes
+    $effect(() => {
+      if (containerElement && typeof window !== 'undefined') {
+        const updateDimensions = () => {
+          width = containerElement.clientWidth || 800;
+          height = 300;
+        };
+        
+        updateDimensions();
+        const resizeObserver = new ResizeObserver(updateDimensions);
+        resizeObserver.observe(containerElement);
+        
+        return () => resizeObserver.disconnect();
+      }
+    });
+</script>
+
+<div class="Timeline" bind:this={containerElement}>
+  <svg class="Chart" width={width} height={height}>
+    <g transform={`translate(${margins.marginLeft}, ${margins.marginTop})`}>
+      
+      <!-- X-axis line -->
+      <line
+        class="Axis__line Axis__line--x"
+        x1="0"
+        y1={boundedHeight}
+        x2={boundedWidth}
+        y2={boundedHeight}
       />
-      <Axis
-        dimension="y"
-        scale={yScale}
-        label={label}
+      
+      <!-- X-axis ticks and labels -->
+      {#each xTicks as tick}
+        {@const xValue = xScale(tick)}
+        {#if xValue !== undefined}
+          <g class="Axis__tick Axis__tick--x" transform={`translate(${xValue}, ${boundedHeight})`}>
+            <line y2="6" stroke="#bdc3c7" />
+            <text y="20" text-anchor="middle" fill="#fff" font-size="0.9em">
+              {formatRaceTick(tick)}
+            </text>
+          </g>
+        {/if}
+      {/each}
+      
+      <!-- Y-axis line -->
+      <line
+        class="Axis__line Axis__line--y"
+        x1="0"
+        y1="0"
+        x2="0"
+        y2={boundedHeight}
       />
+      
+      <!-- Y-axis ticks and labels -->
+      {#each yTicks as tick}
+        {@const yValue = yScale(tick)}
+        <g class="Axis__tick Axis__tick--y" transform={`translate(0, ${yValue})`}>
+          <line x2="-6" stroke="#bdc3c7" />
+          <text x="-10" text-anchor="end" fill="#fff" font-size="0.9em" dominant-baseline="middle">
+            {tick}
+          </text>
+        </g>
+      {/each}
+      
+      <!-- Y-axis label -->
+      {#if label}
+        <text
+          class="Axis__label Axis__label--y"
+          x="-40"
+          y={boundedHeight / 2}
+          text-anchor="middle"
+          fill="#fff"
+          font-size="0.8em"
+          transform="rotate(-90, -40, {boundedHeight / 2})"
+        >
+          {label}
+        </text>
+      {/if}
+      
+      <!-- Driver lines -->
       {#each driverData as driver, driverIndex}
         {@const color = driverColors[driverIndex % driverColors.length]}
-        {@const xAccessorScaled = (d: any) => {
-          const raceLabel = raceLabels[d.raceIndex] ?? String(d.raceIndex);
-          return xScale(raceLabel) ?? 0;
-        }}
-        {@const yAccessorScaled = (d: any) => yScale(d.points || 0) ?? 0}
-        <Line
-          data={driver.data}
-          xAccessor={xAccessorScaled}
-          yAccessor={yAccessorScaled}
-          style="stroke: {color}; stroke-width: 2px; fill: none;"
-        />
+        {@const linePath = lineGenerator(driver.data)}
+        {#if linePath}
+          <path
+            class="Line"
+            d={linePath}
+            fill="none"
+            stroke={color}
+            stroke-width="2"
+            stroke-linecap="round"
+          />
+        {/if}
       {/each}
-    </Chart>
-  </div>
+      
+    </g>
+  </svg>
+</div>
+
+<style>
+  .Timeline {
+    height: 300px;
+    min-width: 500px;
+    width: calc(100% + 1em);
+    margin-bottom: 2em;
+  }
   
-  <style>
-    .Timeline {
-      height: 300px;
-      min-width: 500px;
-      width: calc(100% + 1em);
-      margin-bottom: 2em;
-    }
-  </style>
+  .Chart {
+    display: block;
+  }
   
+  .Axis__line {
+    stroke: #bdc3c7;
+  }
+  
+  .Axis__tick {
+    font-size: 0.9em;
+  }
+  
+  .Axis__tick--x text {
+    fill: #fff;
+  }
+  
+  .Axis__tick--y text {
+    fill: #fff;
+  }
+  
+  .Axis__label {
+    font-size: 0.8em;
+    letter-spacing: 0.01em;
+  }
+  
+  .Line {
+    transition: all 0.3s ease-out;
+  }
+</style>
