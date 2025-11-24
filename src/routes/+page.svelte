@@ -9,6 +9,10 @@
     import { fetchRaceSessionsWithResults, fetchDrivers } from '$lib/utils/api';
     import { transformToChartData } from '$lib/utils/chart';
     import { formatDate, getTeamColour } from '$lib/utils/format';
+    
+    // Assets
+    import headerImage from '$lib/assets/header.jpg';
+    import footerImage from '$lib/assets/footer.jpg';
 
     // State
     let raceDrivers: Driver[] = $state([]);
@@ -110,6 +114,10 @@
 
 <Header />  
 
+<section class="header">
+    <img src={headerImage} alt="Headerimage" class="header-image" />
+    <h1>Comeback <span>Max Verstappen</span></h1>
+</section>
 <div class="page-container">
     <section class="race-sessions">
 
@@ -199,3 +207,6 @@
 
     </section>
 </div>
+<section class="footer">
+    <img src={footerImage} alt="Footerimage" class="footer-image" />
+</section>
