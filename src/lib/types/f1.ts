@@ -1,6 +1,7 @@
 export interface Driver {
     driver_number?: number;
     full_name?: string;
+    last_name?: string;
     team_name?: string;
     team_colour?: string;
     nationality?: string;

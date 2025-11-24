@@ -22,3 +22,13 @@ export function formatDate(dateString?: string): string | null {
     });
 }
 
+/**
+ * Extract last name from full name
+ */
+export function getLastName(lastName?: string): string {
+    if (!lastName) return 'Unknown';
+    
+    const parts = lastName.trim().split(/\s+/);
+    return parts.length > 1 ? parts[parts.length - 1] : lastName;
+}
+

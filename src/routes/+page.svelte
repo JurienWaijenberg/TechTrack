@@ -46,8 +46,33 @@
         }
     }
 
-    // Transform data for chart
-    const driverChartData = $derived(transformToChartData(raceSessions));
+    // Create mapping from driver_number to last_name
+    const driverNumberToLastName = $derived.by(() => {
+        const map = new Map<number, string>();
+        raceDrivers.forEach(driver => {
+            if (driver.driver_number !== undefined && driver.last_name) {
+                map.set(driver.driver_number, driver.last_name);
+            }
+        });
+        return map;
+    });
+
+    // Helper function to get driver last name
+    function getDriverLastName(driverNumber?: number, fullName?: string): string {
+        if (driverNumber !== undefined) {
+            const lastName = driverNumberToLastName.get(driverNumber);
+            if (lastName) return lastName;
+        }
+        // Fallback to extracting from full_name
+        if (fullName) {
+            const parts = fullName.trim().split(/\s+/);
+            return parts.length > 1 ? parts[parts.length - 1] : fullName;
+        }
+        return 'Unknown';
+    }
+
+    // Transform data for chart (use drivers data to get last names)
+    const driverChartData = $derived(transformToChartData(raceSessions, raceDrivers));
 
     // Load data on mount
     $effect(() => {
@@ -73,15 +98,27 @@
             <div class="race-drivers">
                 {#each raceDrivers as driver}
                     <div class="race-driver">
-                        <img src={driver.headshot_url} alt={driver.full_name ?? `Driver ${driver.driver_number ?? 'Unknown'}`} />
+                        <img src={driver.headshot_url} alt={driver.full_name ?? 'Unknown'} />
                         <section>
-                            <p>{driver.full_name ?? `Driver ${driver.driver_number ?? 'Unknown'}`}</p>
+                            <p>{driver.full_name ?? 'Unknown'}</p>
                             <p>{driver.team_name ?? 'Team unavailable'}</p>
                         </section>
                     </div>
                 {/each}
             </div>
         </section>
+
+        {#if raceSessions.length > 0 && driverChartData.driverData.length > 0}
+            <div class="App">
+                <h1>F1 Driver Points Championship</h1>
+                <div class="App__charts">
+                    <Timeline
+                        driverData={driverChartData.driverData}
+                        raceLabels={driverChartData.raceLabels}
+                        label="Points" />
+                </div>
+            </div>
+        {/if}
 
         <h2>2025 F1 Race Sessions</h2>
 
@@ -115,7 +152,7 @@
                             {#each session.results as result}
                                 <li class="session-result">
                                     <span class="position">P{result.position ?? '—'}</span>
-                                    <span class="driver">{result.full_name ?? `Driver ${result.driver_number ?? '—'}`}</span>
+                                    <span class="driver">{getDriverLastName(result.driver_number, result.full_name)}</span>
                                     <span class="team">{result.team_name ?? 'Team unavailable'}</span>
                                     <span class="meta">
                                         {#if result.time}
@@ -138,18 +175,6 @@
                     {/if}
                 </article>
             {/each}
-        {/if}
-
-        {#if raceSessions.length > 0 && driverChartData.driverData.length > 0}
-            <div class="App">
-                <h1>F1 Driver Points Championship</h1>
-                <div class="App__charts">
-                    <Timeline
-                        driverData={driverChartData.driverData}
-                        raceLabels={driverChartData.raceLabels}
-                        label="Points" />
-                </div>
-            </div>
         {/if}
 
     </section>
