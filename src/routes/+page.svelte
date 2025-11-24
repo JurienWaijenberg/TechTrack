@@ -8,7 +8,11 @@
     // Utils
     import { fetchRaceSessionsWithResults, fetchDrivers } from '$lib/utils/api';
     import { transformToChartData } from '$lib/utils/chart';
-    import { formatDate } from '$lib/utils/format';
+    import { formatDate, getTeamColour } from '$lib/utils/format';
+    
+    // Assets
+    import headerImage from '$lib/assets/header.jpg';
+    import footerImage from '$lib/assets/footer.jpg';
 
     // State
     let raceDrivers: Driver[] = $state([]);
@@ -57,6 +61,17 @@
         return map;
     });
 
+    // Create mapping from driver_number to team_name
+    const driverNumberToTeamName = $derived.by(() => {
+        const map = new Map<number, string>();
+        raceDrivers.forEach(driver => {
+            if (driver.driver_number !== undefined && driver.team_name) {
+                map.set(driver.driver_number, driver.team_name);
+            }
+        });
+        return map;
+    });
+
     // Helper function to get driver last name
     function getDriverLastName(driverNumber?: number, fullName?: string): string {
         if (driverNumber !== undefined) {
@@ -69,6 +84,15 @@
             return parts.length > 1 ? parts[parts.length - 1] : fullName;
         }
         return 'Unknown';
+    }
+
+    // Helper function to get team name from driver number
+    function getTeamName(driverNumber?: number): string {
+        if (driverNumber !== undefined) {
+            const teamName = driverNumberToTeamName.get(driverNumber);
+            if (teamName) return teamName;
+        }
+        return 'Team unavailable';
     }
 
     // Transform data for chart (use drivers data to get last names)
@@ -90,6 +114,10 @@
 
 <Header />  
 
+<section class="header">
+    <img src={headerImage} alt="Headerimage" class="header-image" />
+    <h1>Comeback <span>Max Verstappen</span></h1>
+</section>
 <div class="page-container">
     <section class="race-sessions">
 
@@ -97,7 +125,7 @@
             <h2>2025 F1 Drivers</h2>
             <div class="race-drivers">
                 {#each raceDrivers as driver}
-                    <div class="race-driver">
+                    <div class="race-driver" style="border-bottom: 20px solid {getTeamColour(driver.team_colour)}">
                         <img src={driver.headshot_url} alt={driver.full_name ?? 'Unknown'} />
                         <section>
                             <p>{driver.full_name ?? 'Unknown'}</p>
@@ -153,7 +181,7 @@
                                 <li class="session-result">
                                     <span class="position">P{result.position ?? '—'}</span>
                                     <span class="driver">{getDriverLastName(result.driver_number, result.full_name)}</span>
-                                    <span class="team">{result.team_name ?? 'Team unavailable'}</span>
+                                    <span class="team">{getTeamName(result.driver_number)}</span>
                                     <span class="meta">
                                         {#if result.time}
                                             Time: {result.time}
@@ -179,3 +207,6 @@
 
     </section>
 </div>
+<section class="footer">
+    <img src={footerImage} alt="Footerimage" class="footer-image" />
+</section>

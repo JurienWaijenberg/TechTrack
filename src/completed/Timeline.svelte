@@ -1,13 +1,6 @@
 <script lang="ts">
     import * as d3 from "d3";
-    
-    // Color scheme for driver lines
-    const driverColors = [
-      "#9980fa", "#FF6B6B", "#4ECDC4", "#45B7D1", "#FFA07A",
-      "#98D8C8", "#F7DC6F", "#BB8FCE", "#85C1E2", "#F8B739",
-      "#52BE80", "#E74C3C", "#3498DB", "#9B59B6", "#1ABC9C",
-      "#F39C12", "#E67E22", "#34495E", "#16A085", "#27AE60"
-    ];
+    import { getTeamColour } from '$lib/utils/format';
   
     interface DriverDataPoint {
         raceIndex: number;
@@ -16,6 +9,7 @@
     
     interface DriverData {
         driverName: string;
+        teamColour?: string;
         data: DriverDataPoint[];
     }
   
@@ -247,7 +241,7 @@
       
       <!-- Driver lines -->
       {#each driverData as driver, driverIndex}
-        {@const color = driverColors[driverIndex % driverColors.length]}
+        {@const color = getTeamColour(driver.teamColour)}
         {@const linePath = lineGenerator(driver.data)}
         {#if linePath}
           <path

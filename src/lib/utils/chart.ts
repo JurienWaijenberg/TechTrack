@@ -7,6 +7,7 @@ interface DriverDataPoint {
 
 export interface DriverData {
     driverName: string;
+    teamColour?: string;
     data: DriverDataPoint[];
 }
 
@@ -24,17 +25,23 @@ export function transformToChartData(raceSessions: RaceSession[], drivers: Drive
         return { driverData: [], raceLabels: [] };
     }
     
-    // Create mapping from driver_number to last_name using drivers data
+    // Create mapping from driver_number to last_name and team_colour using drivers data
     const driverNumberToLastName = new Map<number, string>();
+    const driverNumberToTeamColour = new Map<number, string>();
     drivers.forEach(driver => {
-        if (driver.driver_number !== undefined && driver.last_name) {
-            driverNumberToLastName.set(driver.driver_number, driver.last_name);
+        if (driver.driver_number !== undefined) {
+            if (driver.last_name) {
+                driverNumberToLastName.set(driver.driver_number, driver.last_name);
+            }
+            if (driver.team_colour) {
+                driverNumberToTeamColour.set(driver.driver_number, driver.team_colour);
+            }
         }
     });
     
     // Collect points per driver per race
     const driverPointsMap = new Map<number, number[]>();
-    const driverInfoMap = new Map<number, { name: string; number: number }>();
+    const driverInfoMap = new Map<number, { name: string; number: number; teamColour?: string }>();
     const raceLabels: string[] = [];
     
     raceSessions.forEach((session, raceIndex) => {
@@ -52,9 +59,11 @@ export function transformToChartData(raceSessions: RaceSession[], drivers: Drive
                     // Get last name from drivers mapping, fallback to extracting from full_name
                     const lastName = driverNumberToLastName.get(driverNumber) 
                         || (result.full_name ? (result.full_name.split(/\s+/).pop() || `Driver ${driverNumber}`) : `Driver ${driverNumber}`);
+                    const teamColour = driverNumberToTeamColour.get(driverNumber);
                     driverInfoMap.set(driverNumber, {
                         name: lastName,
-                        number: driverNumber
+                        number: driverNumber,
+                        teamColour
                     });
                 }
                 
@@ -91,6 +100,7 @@ export function transformToChartData(raceSessions: RaceSession[], drivers: Drive
             
             return {
                 driverName: driverInfo.name,
+                teamColour: driverInfo.teamColour,
                 data
             };
         })

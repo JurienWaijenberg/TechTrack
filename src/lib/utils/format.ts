@@ -32,3 +32,15 @@ export function getLastName(lastName?: string): string {
     return parts.length > 1 ? parts[parts.length - 1] : lastName;
 }
 
+export function getTeamColour(teamColour?: string): string {
+    if (!teamColour) return '#000000';
+    
+    // If the color doesn't start with #, add it
+    const trimmed = teamColour.trim();
+    if (trimmed.startsWith('#')) {
+        return trimmed;
+    }
+    
+    return `#${trimmed}`;
+}
+
