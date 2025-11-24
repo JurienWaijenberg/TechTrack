@@ -98,6 +98,18 @@ body {
     margin: 0;
 }
 
+.session-result:nth-child(1) {
+    border-bottom: 20px solid #d3af37;
+}
+
+.session-result:nth-child(2) {
+    border-bottom: 20px solid #c4c4c4;
+}
+
+.session-result:nth-child(3) {
+    border-bottom: 20px solid #ce8946;
+}
+
 .session-result {
     background: rgba(0, 0, 0, 0.25);
     border-radius: 0.5rem;
