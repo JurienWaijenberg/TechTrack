@@ -1,4 +1,4 @@
-import type { RaceSession } from '../types/f1';
+import type { RaceSession, Driver } from '../types/f1';
 
 interface DriverDataPoint {
     raceIndex: number;
@@ -19,10 +19,18 @@ export interface ChartData {
  * Transform race sessions into driver points data for the chart
  * Uses cumulative points (championship standings)
  */
-export function transformToChartData(raceSessions: RaceSession[]): ChartData {
+export function transformToChartData(raceSessions: RaceSession[], drivers: Driver[] = []): ChartData {
     if (raceSessions.length === 0) {
         return { driverData: [], raceLabels: [] };
     }
+    
+    // Create mapping from driver_number to last_name using drivers data
+    const driverNumberToLastName = new Map<number, string>();
+    drivers.forEach(driver => {
+        if (driver.driver_number !== undefined && driver.last_name) {
+            driverNumberToLastName.set(driver.driver_number, driver.last_name);
+        }
+    });
     
     // Collect points per driver per race
     const driverPointsMap = new Map<number, number[]>();
@@ -41,8 +49,11 @@ export function transformToChartData(raceSessions: RaceSession[]): ChartData {
                 // Initialize driver if not seen before
                 if (!driverPointsMap.has(driverNumber)) {
                     driverPointsMap.set(driverNumber, new Array(raceSessions.length).fill(0));
+                    // Get last name from drivers mapping, fallback to extracting from full_name
+                    const lastName = driverNumberToLastName.get(driverNumber) 
+                        || (result.full_name ? (result.full_name.split(/\s+/).pop() || `Driver ${driverNumber}`) : `Driver ${driverNumber}`);
                     driverInfoMap.set(driverNumber, {
-                        name: result.full_name ?? `Driver ${driverNumber}`,
+                        name: lastName,
                         number: driverNumber
                     });
                 }

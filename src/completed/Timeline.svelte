@@ -28,8 +28,15 @@
     let { driverData = [], raceLabels = [], label = "Points" }: Props = $props();
   
     let containerElement: HTMLDivElement;
+    let svgElement: SVGSVGElement;
     let width = $state(800);
-    let height = $state(300);
+    let height = $state(500);
+  
+    // Tooltip state
+    let tooltipVisible = $state(false);
+    let tooltipX = $state(0);
+    let tooltipY = $state(0);
+    let tooltipDriver: { name: string; points: number; race: string } | null = $state(null);
   
     const margins = {
       marginTop: 40,
@@ -87,12 +94,76 @@
       return d.length > 10 ? d.substring(0, 10) + '...' : d;
     }
     
+    // Find closest data point to mouse position
+    function findClosestPoint(mouseX: number, mouseY: number): { driver: DriverData; point: DriverDataPoint; raceLabel: string } | null {
+      let closest: { driver: DriverData; point: DriverDataPoint; raceLabel: string; distance: number } | null = null;
+      
+      for (const driver of driverData) {
+        for (const point of driver.data) {
+          const raceIdx = point.raceIndex ?? 0;
+          const raceLabel = raceLabels[raceIdx] || '';
+          const xValue = xScale(raceLabel);
+          
+          if (xValue === undefined) continue;
+          
+          const yValue = yScale(point.points || 0);
+          const distance = Math.sqrt(Math.pow(mouseX - xValue, 2) + Math.pow(mouseY - yValue, 2));
+          
+          if (!closest || distance < closest.distance) {
+            closest = { driver, point, raceLabel, distance };
+          }
+        }
+      }
+      
+      // Only return if within reasonable distance (50px)
+      if (closest && closest.distance < 50) {
+        return { driver: closest.driver, point: closest.point, raceLabel: closest.raceLabel };
+      }
+      
+      return null;
+    }
+    
+    // Handle mouse move on SVG
+    function handleMouseMove(event: MouseEvent) {
+      if (!svgElement) return;
+      
+      const rect = svgElement.getBoundingClientRect();
+      const mouseX = event.clientX - rect.left - margins.marginLeft;
+      const mouseY = event.clientY - rect.top - margins.marginTop;
+      
+      // Only show tooltip if within bounds
+      if (mouseX < 0 || mouseX > boundedWidth || mouseY < 0 || mouseY > boundedHeight) {
+        tooltipVisible = false;
+        return;
+      }
+      
+      const closest = findClosestPoint(mouseX, mouseY);
+      
+      if (closest) {
+        tooltipX = event.clientX;
+        tooltipY = event.clientY;
+        tooltipDriver = {
+          name: closest.driver.driverName,
+          points: closest.point.points,
+          race: closest.raceLabel
+        };
+        tooltipVisible = true;
+      } else {
+        tooltipVisible = false;
+      }
+    }
+    
+    function handleMouseLeave() {
+      tooltipVisible = false;
+      tooltipDriver = null;
+    }
+    
     // Update dimensions when container size changes
     $effect(() => {
       if (containerElement && typeof window !== 'undefined') {
         const updateDimensions = () => {
           width = containerElement.clientWidth || 800;
-          height = 300;
+          height = 500;
         };
         
         updateDimensions();
@@ -105,7 +176,16 @@
 </script>
 
 <div class="Timeline" bind:this={containerElement}>
-  <svg class="Chart" width={width} height={height}>
+  <svg 
+    class="Chart" 
+    width={width} 
+    height={height}
+    bind:this={svgElement}
+    role="img"
+    aria-label="F1 Driver Points Championship Chart"
+    onmousemove={handleMouseMove}
+    onmouseleave={handleMouseLeave}
+  >
     <g transform={`translate(${margins.marginLeft}, ${margins.marginTop})`}>
       
       <!-- X-axis line -->
@@ -123,7 +203,7 @@
         {#if xValue !== undefined}
           <g class="Axis__tick Axis__tick--x" transform={`translate(${xValue}, ${boundedHeight})`}>
             <line y2="6" stroke="#bdc3c7" />
-            <text y="20" text-anchor="middle" fill="#fff" font-size="0.9em">
+            <text y="20" text-anchor="middle" fill="#fff" font-size="0.9em" transform="rotate(25) translate(30, 0)">
               {formatRaceTick(tick)}
             </text>
           </g>
@@ -183,11 +263,23 @@
       
     </g>
   </svg>
+  
+  <!-- Tooltip -->
+  {#if tooltipVisible && tooltipDriver}
+    <div 
+      class="tooltip"
+      style="left: {tooltipX}px; top: {tooltipY}px;"
+    >
+      <div class="tooltip__driver">{tooltipDriver.name}</div>
+      <div class="tooltip__race">{tooltipDriver.race}</div>
+      <div class="tooltip__points">{tooltipDriver.points} points</div>
+    </div>
+  {/if}
 </div>
 
 <style>
   .Timeline {
-    height: 300px;
+    height: 500px;
     min-width: 500px;
     width: calc(100% + 1em);
     margin-bottom: 2em;
@@ -220,5 +312,46 @@
   
   .Line {
     transition: all 0.3s ease-out;
+    cursor: pointer;
+  }
+  
+  .Line:hover {
+    stroke-width: 3;
+    opacity: 0.9;
+  }
+  
+  .tooltip {
+    position: fixed;
+    background: rgba(0, 0, 0, 0.9);
+    color: #fff;
+    padding: 0.75rem 1rem;
+    border-radius: 0.5rem;
+    font-size: 0.9rem;
+    pointer-events: none;
+    z-index: 1000;
+    transform: translate(-50%, -100%);
+    margin-top: -10px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    min-width: 150px;
+  }
+  
+  .tooltip__driver {
+    font-weight: 600;
+    font-size: 1rem;
+    margin-bottom: 0.25rem;
+    color: #FFD166;
+  }
+  
+  .tooltip__race {
+    font-size: 0.85rem;
+    opacity: 0.8;
+    margin-bottom: 0.25rem;
+  }
+  
+  .tooltip__points {
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: #4ECDC4;
   }
 </style>
