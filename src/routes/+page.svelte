@@ -78,11 +78,6 @@
             const lastName = driverNumberToLastName.get(driverNumber);
             if (lastName) return lastName;
         }
-        // Fallback to extracting from full_name
-        if (fullName) {
-            const parts = fullName.trim().split(/\s+/);
-            return parts.length > 1 ? parts[parts.length - 1] : fullName;
-        }
         return 'Unknown';
     }
 
